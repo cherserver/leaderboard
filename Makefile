@@ -13,7 +13,13 @@ LEADERBOARD_TARGET  = $(LEADERBOARD_SOURCES:.cpp=.o)
 PRODUCE_ONE_SOURCES = produce_one.cpp
 PRODUCE_ONE_TARGET  = $(LEADERBOARD_SOURCES:.cpp=.o)
 
-all: leaderboard produce_one
+MONITOR_SOURCES = monitor.cpp $(COMMON_CPPS)
+MONITOR_TARGET  = $(MONITOR_SOURCES:.cpp=.o)
+
+LOAD_SOURCES = load.cpp $(COMMON_CPPS)
+LOAD_TARGET  = $(LOAD_SOURCES:.cpp=.o)
+
+all: leaderboard produce_one monitor load
 
 leaderboard: $(LEADERBOARD_TARGET)
 	@echo "-----------------------"
@@ -29,3 +35,16 @@ produce_one: $(PRODUCE_ONE_TARGET)
 	@$(CXX) $(CPPFLAGS) $(LIBS) $(PRODUCE_ONE_SOURCES) -o bin/produce_one
 	@echo "produce_one location: bin/produce_one. It is binary to send one message to leaderboard"
 	
+monitor: $(MONITOR_TARGET)
+	@echo "-----------------------"
+	@echo "Make $(MONITOR_SOURCES) with $(LIBS)"
+	@mkdir -p bin
+	@$(CXX) $(CPPFLAGS) $(LIBS) $(MONITOR_SOURCES) -o bin/monitor
+	@echo "monitor location: bin/monitor. It is binary to monitor leaderboard output messages"
+
+load: $(LOAD_TARGET)
+	@echo "-----------------------"
+	@echo "Make $(LOAD_SOURCES) with $(LIBS)"
+	@mkdir -p bin
+	@$(CXX) $(CPPFLAGS) $(LIBS) $(LOAD_SOURCES) -o bin/load
+	@echo "monitor location: bin/monitor. It is binary to monitor leaderboard output messages"	

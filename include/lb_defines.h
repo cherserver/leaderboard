@@ -15,4 +15,6 @@ const std::string MSG_USER_WON = "user_deal_won";
 const std::string MSG_USER_CONNECT = "user_connected";
 const std::string MSG_USER_DISCONNECT = "user_disconnected";
 
+const int MAX_NEIGHBOURS = 10;
+
 #endif /* INCLUDE_LB_DEFINES_H_ */

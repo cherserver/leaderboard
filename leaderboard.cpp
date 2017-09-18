@@ -43,7 +43,6 @@ public:
 		lock_guard<recursive_mutex> cs(m_mutex);
 
 		CheckWeeklyDrop();
-		Debug("GetStatMessage called for " + str::Str(id));
 
 		auto fnd_user = m_users.find(id);
 		if (fnd_user == m_users.end())
@@ -53,9 +52,53 @@ public:
 		if (m_board.empty())
 			throw err::Error("missed", "leaderboard");
 
-		string result = "Leaders:";
+		//Формат не ограничен, поэтому выведу в человекочитаемом виде
+		string result = "User:";
+		result += "\n" + ToString(fnd_user->second.board);
+
+		result += "\nLeaders:";
+		int leader_count = MAX_NEIGHBOURS;
 		for (auto lead = m_board.rbegin(); lead != m_board.rend(); ++lead) {
-			result += "\n " + str::Str(lead->place);
+			result += "\n" + ToString(lead);
+
+			--leader_count;
+			if (leader_count <= 0)
+				break;
+		}
+
+		result += "\nNeighbours up:";
+		auto cur_board_up = fnd_user->second.board;
+		++cur_board_up;
+
+		if (cur_board_up == m_board.end()) {
+			result += " empty";
+		} else {
+			int count = MAX_NEIGHBOURS;
+			string subresult;
+			for (; cur_board_up != m_board.end(); ++cur_board_up) {
+				subresult = "\n" + ToString(cur_board_up) + subresult;
+
+				--count;
+				if (count <=0)
+					break;
+			}
+
+			result += subresult;
+		}
+
+		result += "\nNeighbours down:";
+		auto cur_board_down = fnd_user->second.board;
+		if (cur_board_down == m_board.begin()) {
+			result += " empty";
+		} else {
+			int count = MAX_NEIGHBOURS;
+			while (count > 0) {
+				--cur_board_down;
+				result += "\n" + ToString(cur_board_down);
+				if (cur_board_down == m_board.begin())
+					break;
+				--count;
+			}
 		}
 
 		return result;
@@ -80,7 +123,7 @@ public:
 		m_board.push_front(desc);
 		inserted.first->second.board = m_board.begin();
 
-		DebugContents();
+		//DebugContents();
 	}
 
 	void RenameUser(const int64_t id, const string &new_name) {
@@ -112,7 +155,7 @@ public:
 
 		if (next_board == m_board.end() || next_board->amount > new_amount) {
 			cur_board->amount = new_amount;
-			DebugContents();
+			//DebugContents();
 			return;
 		}
 
@@ -133,7 +176,7 @@ public:
 		fnd_user->second.board = m_board.insert(next_board, *cur_board);
 		m_board.erase(cur_board);
 
-		DebugContents();
+		//DebugContents();
 	}
 private:
 	date::SystemTimePoint m_week_begin;
@@ -177,15 +220,19 @@ private:
 		m_week_end = date::GetWeekEnd();
 	}
 
-	string ToString(BoardList::const_iterator &user_pos) const {
-		return str::Str(user_pos->place) + ". " + user_pos->user->second.name + "  " + str::Str(user_pos->amount, 2);
+	template <class IteratorType>
+	static string ToString(IteratorType &user_pos) {
+		return str::Str(user_pos->place) + ". " +
+				user_pos->user->second.name +
+				" (id:" + str::Str(user_pos->user->first) + ")" +
+				"  " + str::Str(user_pos->amount, 2);
 	}
 
 	void DebugContents() const {
 		Debug("Board contents:");
 
 		for (auto cur = m_board.rbegin(); cur != m_board.rend(); ++cur)
-			Debug("\t" + str::Str(cur->place) + ". " + cur->user->second.name + "  " + str::Str(cur->amount, 2));
+			Debug("\t" + ToString(cur));
 	}
 } leaderboard;
 
@@ -295,11 +342,10 @@ public:
 			//чтобы не блокировать список юзеров лишнее время. Например во время постановки сообщения в очередь
 			{
 				lock_guard<mutex> cs(m_data_mutex);
-				DebugContents();
+				//DebugContents();
 				auto cur_time = std::chrono::steady_clock::now();
 				if (m_reminder.empty()) {
-					//timepoint = cur_time + chrono::minutes(1); //какое-то время - разбудят раньше, если что
-					timepoint = cur_time + chrono::seconds(10);
+					timepoint = cur_time + chrono::minutes(1); //какое-то время - разбудят раньше, если что
 				} else {
 					const auto &check = m_reminder.back();
 					if (check.when <= cur_time) {
@@ -312,15 +358,13 @@ public:
 						m_reminder.push_front(check);
 
 						auto &new_check = m_reminder.front();
-						//new_check.when = cur_time + chrono::minutes(1);
-						new_check.when = cur_time + chrono::seconds(5);
+						new_check.when = cur_time + chrono::minutes(1);
 						new_check.user->second = m_reminder.begin();
 
 						m_reminder.pop_back();
 
 						timepoint = m_reminder.back().when;
 					} else {
-						Debug("no process reminder");
 						timepoint = check.when;
 					}
 				}
@@ -489,7 +533,7 @@ private:
 	string m_consumer;
 
 	void ProcessRequest() {
-		Envelope::ptr_t env = m_connection->BasicConsumeMessage(m_consumer);
+		auto env = m_connection->BasicConsumeMessage(m_consumer);
 
 		string msg = env->Message()->Body();
 		ProcessMessage(msg);
@@ -498,9 +542,7 @@ private:
 	}
 
 	void ProcessMessage(string &msg) const {
-		//Debug(msg);
 		string msg_type = str::GetWord(msg, '\n');
-		Debug("Incoming message: '" + msg_type + "'");
 		string id_str = str::GetWord(msg, '\n');
 
 		//валидировать id в реальности надо после валидации типа сообщения
@@ -558,10 +600,10 @@ int main() {
 		producer.Stop();
 		sender_thread.join();
 	} catch (const std::exception &e) {
-		cout << "Unexpected error thrown: " << e.what() << endl;
+		Debug("Unexpected error thrown: " + string(e.what()));
 		return EXIT_FAILURE;
 	} catch (...) {
-		cout << "Unknown unexpected error thrown" << endl;
+		Debug("Unknown unexpected error thrown");
 		return EXIT_FAILURE;
 	}
 
