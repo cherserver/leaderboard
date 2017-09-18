@@ -8,11 +8,11 @@
 using namespace std;
 using namespace AmqpClient;
 
-int main(int argc, char *argv[]) {
+int main() {
 	try {
 		int64_t load = 1000;
 
-		Channel::ptr_t connection(Channel::Create("localhost"));
+		Channel::ptr_t connection(Channel::Create(RABBITMQ_HOST));
 		connection->DeclareQueue(LB_INPUT_QUEUE, false, false, false, false);
 
 		for (int64_t cnt = 1; cnt <= load; ++cnt) {

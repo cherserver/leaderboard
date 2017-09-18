@@ -3,6 +3,8 @@
 
 #include <string>
 
+const std::string RABBITMQ_HOST = "localhost";
+
 const std::string LB_INPUT_QUEUE = "leaderboard_input";
 const std::string LB_INPUT_ROUTE = "leaderboard_input";
 

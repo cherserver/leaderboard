@@ -12,7 +12,7 @@ void PrintUsage() {
 	cout << "[MSG_TYPE] with [PARAMS] could be:" << endl;
 	cout << "\tuser_registered [id] [name]" << endl;
 	cout << "\tuser_renamed [id] [name]" << endl;
-	cout << "\tuser_deal_won [id] [time] [amount]" << endl;
+	cout << "\tuser_deal_won [id] [time] [amount] (time in YYYY-MM-DD hh:mm:ss format, ex. \"2017-09-18 10:45:31\")" << endl;
 	cout << "\tuser_connected [id]" << endl;
 	cout << "\tuser_disconnected [id]" << endl;
 }
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 			return EXIT_FAILURE;
 		}
 
-		Channel::ptr_t connection(Channel::Create("localhost"));
+		Channel::ptr_t connection(Channel::Create(RABBITMQ_HOST));
 
 		connection->DeclareQueue(LB_INPUT_QUEUE, false, false, false, false);
 		connection->BasicPublish("", LB_INPUT_ROUTE, BasicMessage::Create(content));

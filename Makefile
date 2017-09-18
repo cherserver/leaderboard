@@ -47,4 +47,8 @@ load: $(LOAD_TARGET)
 	@echo "Make $(LOAD_SOURCES) with $(LIBS)"
 	@mkdir -p bin
 	@$(CXX) $(CPPFLAGS) $(LIBS) $(LOAD_SOURCES) -o bin/load
-	@echo "monitor location: bin/monitor. It is binary to monitor leaderboard output messages"	
+	@echo "load location: bin/load. It is binary to produce some incoming load for leaderboard"	
+	
+clean:
+	rm -rf bin/
+	rm *.o

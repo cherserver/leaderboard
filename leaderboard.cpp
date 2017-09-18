@@ -21,6 +21,9 @@ void Debug(const string &msg) {
 
 /*
  * Класс, занимающийся ведением лидерборда
+ * Хранилище пользователей - set
+ * Хранилище выигрышей - list (сортированный по убыванию позиции)
+ * Элементы обоих хранилищ связаны друг с другом итераторами чтобы исключить лишний поиск
  */
 class LeaderBoard {
 public:
@@ -104,6 +107,9 @@ public:
 		return result;
 	}
 
+	/*
+	 * Вызывается при user_registered
+	 */
 	void AddUser(const int64_t id, const string &name) {
 		lock_guard<recursive_mutex> cs(m_mutex);
 
@@ -126,6 +132,9 @@ public:
 		//DebugContents();
 	}
 
+	/*
+	 * Вызывается при user_renamed
+	 */
 	void RenameUser(const int64_t id, const string &new_name) {
 		lock_guard<recursive_mutex> cs(m_mutex);
 
@@ -135,6 +144,9 @@ public:
 		fnd_user->second.name = new_name;
 	}
 
+	/*
+	 * Вызывается при user_deal_won
+	 */
 	void AddWin(const int64_t id, const date::SystemTimePoint &date, double amount) {
 		lock_guard<recursive_mutex> cs(m_mutex);
 
@@ -238,12 +250,13 @@ private:
 
 /*
  * Класс, занимающийся непосредственно рассылкой сообщений - выходной канал связи
+ * Обслуживает очередь сообщений, используя для хранения queue
  */
 class Producer {
 public:
 	Producer()
 	: m_stopped(false)
-	, m_connection(Channel::Create("localhost")) {
+	, m_connection(Channel::Create(RABBITMQ_HOST)) {
 		m_connection->DeclareQueue(LB_OUTPUT_QUEUE, false, false, false, false);
 	}
 
@@ -295,6 +308,18 @@ private:
 
 /*
  * Класс, занимающийся планированием рассылки сообщений
+ * Содержит список подключенных пользователей (set)
+ * и list запланированного времени отправки сообщений
+ * Наиболее раннее (ближайшее) запланированное время - внизу списка
+ *
+ * Элементы списков связаны итераторами для исключения поиска данных
+ *
+ * Внутри класса также реализован отдельный поток Sleeper
+ * для организации прерываемого ожидания запланированного времени
+ *
+ * Прерывание ожидания вызывается в случае подключения пользователя -
+ * его сообщение должно быть отправлено сейчас
+ *
  */
 class Reminder {
 public:
@@ -307,6 +332,9 @@ public:
 			Stop();
 	}
 
+	/*
+	 * Вызывается при user_connected
+	 */
 	void ConnectUser(const int64_t id) {
 		lock_guard<mutex> cs(m_data_mutex);
 
@@ -317,9 +345,14 @@ public:
 		ReminderDesc desc;
 		desc.user = inserted.first;
 		m_reminder.push_back(desc);
+
+		//запланируем сейчас и отменим ожидание следующего
 		m_sleeper.WakeUp();
 	}
 
+	/*
+	 * Вызывается при user_disconnected
+	 */
 	void DisconnectUser(const int64_t id) {
 		lock_guard<mutex> cs(m_data_mutex);
 
@@ -491,7 +524,7 @@ private:
 
 		void SleeperThread() {
 			while(true) {
-				//Нас могут разбудить раньше
+				//Нас могут разбудить раньше - лочку надо отпустить
 				{
 					unique_lock<mutex> wait_lock(m_sleeper_mutex);
 					while(!m_stopped && !m_has_timeout) {
@@ -516,11 +549,13 @@ private:
 
 /*
  * Класс, занимающийся приемом сообщений - входящий канал связи
+ * Обрабатывает полученные сообщения, валидирует данные и
+ * вызывает необходимые методы объектов хранения данных
  */
 class IncomingListener {
 public:
 	void Start() {
-		m_connection = Channel::Create("localhost");
+		m_connection = Channel::Create(RABBITMQ_HOST);
 		m_connection->DeclareQueue(LB_INPUT_QUEUE, false, false, false, false);
 		m_consumer = m_connection->BasicConsume(LB_INPUT_QUEUE, "", true, false);
 

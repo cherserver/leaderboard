@@ -10,7 +10,7 @@ using namespace AmqpClient;
 
 int main() {
 	try {
-		Channel::ptr_t connection(Channel::Create("localhost"));
+		Channel::ptr_t connection(Channel::Create(RABBITMQ_HOST));
 		connection->DeclareQueue(LB_OUTPUT_QUEUE, false, false, false, false);
 		string consumer = connection->BasicConsume(LB_OUTPUT_QUEUE, "", true, true);
 		while(true) {
