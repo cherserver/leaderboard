@@ -19,6 +19,9 @@ bool Username(const std::string &data);
 
 namespace date {
 typedef std::chrono::time_point<std::chrono::system_clock> SystemTimePoint;
+typedef std::chrono::time_point<std::chrono::steady_clock> SteadyTimePoint;
+typedef std::chrono::duration<int, std::milli> MillisecondsDuration;
+
 std::string Format(const SystemTimePoint &time, const std::string &format = "%F %H:%M:%S");
 SystemTimePoint FromString(const std::string &date);
 SystemTimePoint GetWeekBegin();

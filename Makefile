@@ -3,7 +3,7 @@ CFLAGS    = -Wall
 CPPFLAGS  = $(CFLAGS) -I/usr/local/include -L/usr/local/lib -Iinclude/ -I/include
 
 LIBRARIES = SimpleAmqpClient
-LIBS      = $(addprefix -l,$(LIBRARIES))
+LIBS      = -pthread $(addprefix -l,$(LIBRARIES))
 
 COMMON_CPPS = lb_error.cpp lb_functions.cpp
 
